@@ -7,6 +7,7 @@ public class ATM_Reader {
 		Class.forName("com.mysql.cj.jdbc.Driver");
 		Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/atm","root","12345678");
 		//User Choice
+		System.out.println("$-------Find the ATM's cash availability status-------$\n");
 		System.out.println("1. Find ATM ID \n2. Enter ATM ID");
 		System.out.print("Enter your choice: ");
 		int userChoice=s.nextInt();
@@ -23,7 +24,7 @@ public class ATM_Reader {
 			System.out.print("Enter your choice: ");
 			int choice=s.nextInt();
 			
-			if(choice<1 && choice>4) {
+			if(choice<1 || choice>4) {
 				System.out.println("Invalid Choice :(");
 				return;
 			}
@@ -31,10 +32,10 @@ public class ATM_Reader {
 		}
 		//Find Avl_balance
 		else if(userChoice==2) {
-			System.out.print("Enter the AMT ID: ");
+			System.out.print("Enter The ATM ID: ");
 			String atmID=s.next().toLowerCase();
 			System.out.println();
-			atmStatus(s,con,atmID);
+			atmIdValidation(s,con,atmID);
 		}
 		
 		con.close();
@@ -65,21 +66,78 @@ public class ATM_Reader {
 					+rs.getString("area")+" | "+rs.getString("city")+"\n");
 		}
 		
+		int option;
+		do{
+			System.out.println();
+			System.out.println("1. Exit 2. Enter ATM ID");
+			System.out.print("Enter your choice: ");
+			option=s.nextInt();
+			System.out.println();
+			if(option==1) {
+				System.out.print("$----------Session ended successfully----------$");
+				return;
+			}
+			else if(option==2) {
+				System.out.print("\nEnter The ATM ID: ");
+				String atmID=s.next().toLowerCase();
+				atmIdValidation(s,con,atmID);
+			}
+			else {
+				System.out.print("Invalid choice :( ");
+			}
+		}while(option>2);
+		
 	}
 	
-	static void atmStatus(Scanner s,Connection con,String atmID) throws Exception{
-		String query=null;
+	static void atmIdValidation(Scanner s,Connection con,String atmID) throws Exception{
 		
-		if(atmID.contains("iob"))
-			query=("select * from iob where atm_id= ?");
-		else if(atmID.contains("icic")) 
-			query=("select * from icic where atm_id= ?");
-		else if(atmID.contains("cnrb")) 
-			query=("select * from cnrb where atm_id= ?");
-		else if(atmID.contains("sbi")) 
-			query=("select * from sbi where atm_id= ?");
-		else
-				System.out.println("Invalid ATM ID :( ");
+		String bank=null;
+		String query=null;
+		boolean valid;
+		
+		do {
+			valid=true;
+			if(atmID.contains("iob")) 
+				bank="iob";
+			else if(atmID.contains("icic"))
+				bank="icic";
+			else if(atmID.contains("cnrb")) 
+				bank="cnrb";
+			else if(atmID.contains("sbi"))
+				bank="sbi";
+			else {
+					System.out.println("Invalid ATM ID :( ");
+					valid=false;
+					System.out.print("Enter a valid ATM ID: ");
+					atmID=s.next().toLowerCase();
+					System.out.println();
+			}
+			
+			if(valid) {
+				query=("SELECT atm_id FROM "+bank+" WHERE atm_id=?");
+				PreparedStatement ps=con.prepareStatement(query);
+				ps.setString(1,atmID);
+				
+				ResultSet rs=ps.executeQuery();
+				
+				if(rs.next()) {
+					atmStatus(s,con,bank,atmID);
+				}
+				else {
+					System.out.println("Invalid ATM ID :( ");
+					valid=false;
+					System.out.print("Enter a valid ATM ID: ");
+					atmID=s.next().toLowerCase();
+					System.out.println();
+				}
+			}
+		}while(!valid);		
+
+	}
+	
+	static void atmStatus(Scanner s,Connection con,String bank,String atmID) throws Exception{
+		
+		String query=("select * from "+bank+" where atm_id= ?");
 		
 		PreparedStatement ps=con.prepareStatement(query);
 		ps.setString(1,atmID);
@@ -89,12 +147,15 @@ public class ATM_Reader {
 		if(rs.next()) {
 			System.out.print(rs.getString("atm_id")+" | "+rs.getString("branch_name")+" | "
 					+rs.getString("area")+" | "+rs.getString("city")+"\n");
-			if(rs.getDouble("avl_balance")>100000)
+			if(rs.getDouble("avl_balance")>100000){
 				System.out.println("Available balance: 100000+");			
-			else
+				System.out.print("\n$----------Session ended successfully----------$");
+			}
+			else{
 				System.out.println("Available balance: "+rs.getDouble("avl_balance"));
+				System.out.print("\n$----------Session ended successfully----------$");
+			}
 		}
-		
 	}
-	
+
 }
